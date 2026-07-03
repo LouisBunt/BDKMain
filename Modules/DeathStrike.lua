@@ -72,8 +72,6 @@ function mod:CreateFrames()
 
 	local text = f:CreateFontString(nil, "OVERLAY")
 	text:SetFont(BDK.FONT, 14, "OUTLINE")
-	text:SetPoint("LEFT", icon, "RIGHT", 5, 0)
-	text:SetTextColor(0.4, 1, 0.5)
 	self.healText = text
 
 	BDK:RegisterMovable("deathStrike", f, "BDKMain: Todesstoß")
@@ -83,6 +81,18 @@ function mod:ApplySettings()
 	db = BDK.db.profile.deathStrike
 	if not self.frame then return end
 	self.frame:SetScale(db.scale)
+
+	self.icon:SetShown(db.showIcon)
+	self.healText:SetFont(BDK.FONT, db.fontSize, "OUTLINE")
+	local c = db.textColor
+	self.healText:SetTextColor(c.r, c.g, c.b)
+	self.healText:ClearAllPoints()
+	if db.showIcon then
+		self.healText:SetPoint("LEFT", self.icon, "RIGHT", 5, 0)
+	else
+		self.healText:SetPoint("CENTER")
+	end
+
 	BDK:RestorePosition(self.frame, db)
 	self:UpdateDisplay()
 end
@@ -136,7 +146,8 @@ end
 function mod:SetGlow(enabled)
 	if enabled and not self.glowActive then
 		self.glowActive = true
-		LCG.PixelGlow_Start(self.frame, { 0.4, 1, 0.5, 1 }, 8, 0.25, nil, 2)
+		local c = db.textColor
+		LCG.PixelGlow_Start(self.frame, { c.r, c.g, c.b, 1 }, 8, 0.25, nil, 2)
 	elseif not enabled and self.glowActive then
 		self.glowActive = false
 		LCG.PixelGlow_Stop(self.frame)

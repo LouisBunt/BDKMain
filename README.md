@@ -27,6 +27,14 @@ Außerhalb der Blut-Spezialisierung deaktiviert sich das Addon vollständig (all
 ### Cooldown-Leiste
 - Icons für Tanzende Runenwaffe, Vampirblut, Antimagische Hülle, Eisgebundene Seelenstärke, Runenheilung, Blutkochen, Tod und Verfall, Lichfürst sowie Talente (Grabstein, Knochensturm, Monstrositätengliedmaße).
 - Nur bekannte Fähigkeiten werden angezeigt; aktive Wirkungen leuchten.
+- Layout einstellbar: Icons pro Reihe (mit Umbruch) und Wuchsrichtung links/rechts.
+
+### Anpassung (`/bdk`)
+- **Allgemein:** Leisten-Textur (Klassisch / Einfarbig / Schlachtzugsleiste), Hintergrund-Transparenz, Sound-Kanal (Master/Effekte/Dialog).
+- **Knochenschild:** Schriftgröße, Stack-Zahl / Restlaufzeit / Zeitleiste einzeln abschaltbar, Schwellen, Farben, Sounds.
+- **Ressourcen:** Runenmacht-Text, Runen-Countdown-Zahlen, „immer anzeigen“.
+- **Todesstoß:** Icon abschaltbar, Schriftgröße, Textfarbe (färbt auch den Glow).
+- Profile über AceDB, alle Anzeigen frei verschiebbar (`/bdk unlock`).
 
 ## Installation
 

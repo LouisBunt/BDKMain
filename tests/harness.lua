@@ -41,7 +41,10 @@ end
 local function autoMock(explicit)
 	local obj = explicit or {}
 	return setmetatable(obj, {
+		-- Nur Methoden (PascalCase wie die WoW-API) werden automatisch gemockt;
+		-- Datenfelder (bdkBg, icon, ...) bleiben nil, bis das Addon sie setzt.
 		__index = function(t, k)
+			if type(k) ~= "string" or not k:match("^%u") then return nil end
 			local fn = function() end
 			rawset(t, k, fn)
 			return fn
@@ -74,6 +77,9 @@ local function makeRegion(kind, parent)
 		SetStatusBarColor = function(self, red, g, b) self.mockColor = { red, g, b } end,
 		SetCooldown = function(self, s, d) self.mockCd = { s, d } end,
 		Clear = function(self) self.mockCd = nil end,
+		SetSize = function(self, w, h) self.mockW, self.mockH = w, h end,
+		SetColorTexture = function(self, red, g, b, a) self.mockColorTex = { red, g, b, a } end,
+		SetStatusBarTexture = function(self, t) self.mockBarTexture = t end,
 	})
 	return r
 end
@@ -105,7 +111,11 @@ _G.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 _G.format = string.format
 _G.GetTime = function() return now end
 _G.InCombatLockdown = function() return combatLockdown end
-_G.PlaySound = function(id) playedSounds[#playedSounds + 1] = id end
+local lastSoundChannel
+_G.PlaySound = function(id, channel)
+	playedSounds[#playedSounds + 1] = id
+	lastSoundChannel = channel
+end
 _G.UnitClass = function() return "Todesritter", "DEATHKNIGHT" end
 _G.UnitGUID = function() return "Player-1234" end
 _G.UnitPower = function() return runicPower end
@@ -429,6 +439,55 @@ local setFn = opts.args.boneShield.set
 local info = { "boneShield", "width" }
 setFn(info, 300)
 check(getFn(info) == 300 and BDK.db.profile.boneShield.width == 300, "Options: get/set-Roundtrip")
+
+-- === Erweiterte Optionen ===
+check(opts.args.general.args.barTexture and opts.args.general.args.backgroundAlpha
+	and opts.args.general.args.soundChannel, "Options: Allgemein-Tab mit Textur/Transparenz/Sound-Kanal")
+check(opts.args.boneShield.args.fontSize and opts.args.boneShield.args.showDurationBar,
+	"Options: Knochenschild-Schrift und Zeitleisten-Schalter vorhanden")
+check(opts.args.cooldowns.args.iconsPerRow and opts.args.cooldowns.args.growDirection,
+	"Options: Cooldown-Layout-Regler vorhanden")
+
+-- Textur-Auswahl wirkt auf die Leisten
+BDK.db.profile.general.barTexture = "solid"
+BDK:ApplySettings()
+check(BDK:GetBarTexture() == "Interface\\Buttons\\WHITE8x8", "Textur-Auswahl: GetBarTexture liefert Auswahl")
+check(bs.bar.mockBarTexture == "Interface\\Buttons\\WHITE8x8", "Textur-Auswahl: Knochenschild-Leiste umgestellt")
+check(res.powerBar.mockBarTexture == "Interface\\Buttons\\WHITE8x8", "Textur-Auswahl: Runenmacht-Leiste umgestellt")
+
+-- Hintergrund-Transparenz wird live nachgezogen
+BDK.db.profile.general.backgroundAlpha = 0.2
+BDK:ApplySettings()
+check(bs.frame.bdkBg.mockColorTex and math.abs(bs.frame.bdkBg.mockColorTex[4] - 0.2) < 0.001,
+	"Hintergrund-Transparenz auf bestehende Frames angewendet")
+
+-- Sound-Kanal wird beim Abspielen benutzt
+BDK.db.profile.general.soundChannel = "SFX"
+BDK:PlaySoundByKey("raidwarning", true)
+check(lastSoundChannel == "SFX", "Sound-Kanal aus den Optionen verwendet")
+
+-- Zeitleiste abschaltbar
+BDK.db.profile.boneShield.showDurationBar = false
+BDK:ApplySettings()
+check(not bs.durBar:IsShown(), "Knochenschild: Zeitleiste abschaltbar")
+BDK.db.profile.boneShield.showDurationBar = true
+BDK:ApplySettings()
+
+-- Cooldown-Layout: 10 bekannte Icons, 3 pro Reihe -> 3 Spalten, 4 Reihen
+BDK.db.profile.cooldowns.iconsPerRow = 3
+BDK:ApplySettings()
+local expectedW = 3 * (34 + 4) - 4
+local expectedH = 4 * (34 + 4) - 4
+check(cds.frame.mockW == expectedW and cds.frame.mockH == expectedH,
+	"Cooldowns: Umbruch nach 3 Icons pro Reihe (3x4-Raster)")
+BDK.db.profile.cooldowns.iconsPerRow = 12
+BDK:ApplySettings()
+
+-- Todesstoß: Icon abschaltbar, Textfarbe wird übernommen
+BDK.db.profile.deathStrike.showIcon = false
+BDK.db.profile.deathStrike.textColor = { r = 1, g = 0.5, b = 0 }
+BDK:ApplySettings()
+check(not ds.icon:IsShown(), "Todesstoß: Icon abschaltbar")
 
 -- === Testmodus & Lock ===
 BDK:SetTestMode(true)

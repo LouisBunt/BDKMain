@@ -89,6 +89,8 @@ function mod:ApplySettings()
 	f:SetSize(db.width, math.max(height, 10))
 	f:SetScale(db.scale)
 
+	local texture = BDK:GetBarTexture()
+
 	self.runeRow:SetHeight(db.runeHeight)
 	self.runeRow:SetShown(db.showRunes)
 	local runeWidth = (db.width - 5 * 2) / 6
@@ -100,11 +102,15 @@ function mod:ApplySettings()
 		else
 			rune:SetPoint("TOPLEFT", self.runes[i - 1], "TOPRIGHT", 2, 0)
 		end
+		rune.fill:SetTexture(texture)
 		rune.fill:SetVertexColor(db.runeColor.r, db.runeColor.g, db.runeColor.b)
+		rune.cd:SetHideCountdownNumbers(not db.runeCooldownNumbers)
 	end
 
 	self.powerFrame:SetHeight(db.powerHeight)
 	self.powerFrame:SetShown(db.showRunicPower)
+	self.powerBar:SetStatusBarTexture(texture)
+	self.powerText:SetShown(db.showPowerText)
 
 	BDK:RestorePosition(f, db)
 	self:UpdateDeathStrikeCost()
@@ -203,6 +209,7 @@ function mod:UpdateVisibility()
 	if not f then return end
 	local show = BDK.testMode
 		or not BDK.db.profile.locked
+		or db.alwaysShow
 		or InCombatLockdown()
 		or UnitPower("player", POWER_RUNIC) > 0
 	f:SetShown(show)

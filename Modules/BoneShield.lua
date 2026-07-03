@@ -111,8 +111,24 @@ function mod:ApplySettings()
 	db = BDK.db.profile.boneShield
 	local f = self.frame
 	if not f then return end
-	f:SetSize(db.width, db.height + 5)
+
+	-- Ohne Zeitleiste nimmt die Hauptleiste die volle Höhe ein
+	local durBarSpace = db.showDurationBar and 5 or 0
+	f:SetSize(db.width, db.height + durBarSpace)
 	f:SetScale(db.scale)
+	self.bar:SetPoint("BOTTOMRIGHT", -1, durBarSpace + 1)
+	self.durBar:SetShown(db.showDurationBar)
+
+	local texture = BDK:GetBarTexture()
+	self.bar:SetStatusBarTexture(texture)
+	self.durBar:SetStatusBarTexture(texture)
+
+	self.stackText:SetFont(BDK.FONT, db.fontSize, "OUTLINE")
+	self.timeText:SetFont(BDK.FONT, math.max(10, db.fontSize - 5), "OUTLINE")
+	self.label:SetFont(BDK.FONT, math.max(9, db.fontSize - 7), "OUTLINE")
+	self.stackText:SetShown(db.showStackText)
+	self.timeText:SetShown(db.showTimeText)
+
 	self.bar:SetMinMaxValues(0, db.maxStacksDisplay)
 	self.marrowrend:SetSize(db.height + 5, db.height + 5)
 	BDK:RestorePosition(f, db)
