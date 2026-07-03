@@ -71,10 +71,14 @@ local function getOrCreateIcon(self, entry)
 	return btn
 end
 
--- Baut die Icon-Reihe neu auf (bekannte + aktivierte Fähigkeiten)
+-- Baut die Icon-Reihe neu auf (bekannte + aktivierte Fähigkeiten).
+-- Umbruch nach db.iconsPerRow Icons; Wuchsrichtung links/rechts wählbar.
 function mod:RebuildIcons()
 	local shown = 0
 	local size, spacing = db.iconSize, db.spacing
+	local perRow = math.max(db.iconsPerRow or 12, 1)
+	local growLeft = db.growDirection == "LEFT"
+	local anchor = growLeft and "TOPRIGHT" or "TOPLEFT"
 
 	for _, entry in ipairs(TRACKED_SPELLS) do
 		local known = IsPlayerSpell(entry.id)
@@ -84,7 +88,10 @@ function mod:RebuildIcons()
 			btn = getOrCreateIcon(self, entry)
 			btn:SetSize(size, size)
 			btn:ClearAllPoints()
-			btn:SetPoint("TOPLEFT", shown * (size + spacing), 0)
+			local col = shown % perRow
+			local row = math.floor(shown / perRow)
+			local x = col * (size + spacing)
+			btn:SetPoint(anchor, growLeft and -x or x, -row * (size + spacing))
 			btn.cd:SetHideCountdownNumbers(not db.showCountdownNumbers)
 			btn:Show()
 			shown = shown + 1
@@ -94,7 +101,11 @@ function mod:RebuildIcons()
 		end
 	end
 
-	self.frame:SetSize(math.max(shown * (size + spacing) - spacing, size), size)
+	local cols = math.min(shown, perRow)
+	local rows = math.ceil(shown / perRow)
+	self.frame:SetSize(
+		math.max(cols * (size + spacing) - spacing, size),
+		math.max(rows * (size + spacing) - spacing, size))
 	self:UpdateAllCooldowns()
 	self:RefreshGlows()
 end
@@ -209,7 +220,7 @@ end
 function mod:UpdateVisibility()
 	local f = self.frame
 	if not f then return end
-	f:SetShown(BDK.testMode or not BDK.db.profile.locked or InCombatLockdown())
+	f:SetShown(BDK.testMode or not BDK.db.profile.locked or db.alwaysShow or InCombatLockdown())
 end
 
 function mod:OnCombatChanged()

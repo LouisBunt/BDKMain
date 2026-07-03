@@ -23,6 +23,11 @@ local math_abs, math_min, string_format = math.abs, math.min, string.format
 local defaults = {
 	profile = {
 		locked = true,
+		general = {
+			barTexture = "blizzard",
+			backgroundAlpha = 0.55,
+			soundChannel = "Master",
+		},
 		boneShield = {
 			enabled = true,
 			width = 240, height = 28, scale = 1,
@@ -32,6 +37,10 @@ local defaults = {
 			midStackThreshold = 5,      -- <= gilt als Warnung (gelb)
 			expireSoonSeconds = 6,      -- Restlaufzeit-Warnschwelle
 			alwaysShow = false,         -- sonst: nur im Kampf / mit aktiver Aura
+			fontSize = 18,              -- Größe der Stack-Zahl
+			showStackText = true,
+			showTimeText = true,
+			showDurationBar = true,
 			soundsOnlyInCombat = true,
 			soundLowStack = "raidwarning",
 			soundExpiring = "alarmclock",
@@ -49,6 +58,9 @@ local defaults = {
 			position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -196 },
 			showRunes = true,
 			showRunicPower = true,
+			showPowerText = true,
+			runeCooldownNumbers = false,
+			alwaysShow = false,
 			showDeathStrikeMarker = true,
 			capWarning = true,          -- Runenmacht nahe Cap einfärben
 			runeColor  = { r = 0.80, g = 0.10, b = 0.15 },
@@ -59,6 +71,9 @@ local defaults = {
 			enabled = true,
 			scale = 1,
 			position = { point = "CENTER", relPoint = "CENTER", x = 160, y = -178 },
+			showIcon = true,
+			fontSize = 14,
+			textColor = { r = 0.4, g = 1.0, b = 0.5 },
 			glowEnabled = true,
 			glowHealPercent = 20,       -- Glow ab X % des Maximallebens als Heilung
 			glowOnCap = true,           -- Glow bei Runenmacht nahe Cap
@@ -66,6 +81,9 @@ local defaults = {
 		cooldowns = {
 			enabled = true,
 			iconSize = 34, spacing = 4, scale = 1,
+			iconsPerRow = 12,
+			growDirection = "RIGHT",
+			alwaysShow = false,
 			position = { point = "CENTER", relPoint = "CENTER", x = 0, y = -240 },
 			showCountdownNumbers = true,
 			activeGlow = true,
@@ -99,6 +117,14 @@ function BDK:GetSoundValues()
 	return t
 end
 
+-- Verfügbare Sound-Kanäle (bestimmen, über welchen Lautstärke-Regler die
+-- Warnungen laufen)
+BDK.SoundChannels = {
+	Master = "Master (immer hörbar)",
+	SFX = "Effekte",
+	Dialog = "Dialog",
+}
+
 -- Spielt einen Sound aus der Auswahlliste ab; respektiert die Kampf-Beschränkung.
 function BDK:PlaySoundByKey(key, ignoreCombatGate)
 	local s = key and soundById[key]
@@ -109,7 +135,7 @@ function BDK:PlaySoundByKey(key, ignoreCombatGate)
 		and not self.testMode then
 		return
 	end
-	PlaySound(s.id, "Master")
+	PlaySound(s.id, self.db.profile.general.soundChannel or "Master")
 end
 
 --------------------------------------------------------------------------------
@@ -158,16 +184,40 @@ function BDK.SetValueInstant(bar, value)
 	bar:SetValue(value)
 end
 
-BDK.BAR_TEXTURE = "Interface\\TARGETINGFRAME\\UI-StatusBar"
 BDK.FONT = "Fonts\\FRIZQT__.TTF"
 
--- Einheitlicher Rahmen + Hintergrund für alle Anzeigen
+-- Wählbare Leisten-Texturen (eingebaute Spiel-Texturen, keine Mediendateien)
+BDK.Textures = {
+	blizzard = { label = "Klassisch",  path = "Interface\\TARGETINGFRAME\\UI-StatusBar" },
+	solid    = { label = "Einfarbig",  path = "Interface\\Buttons\\WHITE8x8" },
+	raid     = { label = "Schlachtzugsleiste", path = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill" },
+}
+BDK.BAR_TEXTURE = BDK.Textures.blizzard.path
+
+function BDK:GetTextureValues()
+	local t = {}
+	for key, tex in pairs(self.Textures) do t[key] = tex.label end
+	return t
+end
+
+function BDK:GetBarTexture()
+	local tex = self.Textures[self.db.profile.general.barTexture]
+	return tex and tex.path or self.BAR_TEXTURE
+end
+
+-- Einheitlicher Rahmen + Hintergrund für alle Anzeigen.
+-- Alle so behandelten Frames werden registriert, damit die
+-- Hintergrund-Transparenz aus den Optionen live nachgezogen werden kann.
+local skinnedFrames = {}
+
 function BDK.SkinFrame(frame)
 	if not frame.bdkBg then
 		local bg = frame:CreateTexture(nil, "BACKGROUND")
 		bg:SetAllPoints()
-		bg:SetColorTexture(0, 0, 0, 0.55)
+		local alpha = BDK.db and BDK.db.profile.general.backgroundAlpha or 0.55
+		bg:SetColorTexture(0, 0, 0, alpha)
 		frame.bdkBg = bg
+		skinnedFrames[#skinnedFrames + 1] = frame
 	end
 	if not frame.bdkBorder then
 		local b = CreateFrame("Frame", nil, frame, "BackdropTemplate")
@@ -176,6 +226,14 @@ function BDK.SkinFrame(frame)
 		b:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
 		b:SetBackdropBorderColor(0, 0, 0, 0.9)
 		frame.bdkBorder = b
+	end
+end
+
+-- Globale Darstellung (Hintergrund-Transparenz) auf alle Anzeigen anwenden
+function BDK:ApplyGeneralLook()
+	local alpha = self.db.profile.general.backgroundAlpha
+	for _, frame in ipairs(skinnedFrames) do
+		frame.bdkBg:SetColorTexture(0, 0, 0, alpha)
 	end
 end
 
@@ -288,6 +346,7 @@ end
 -- Einstellungen auf alle aktiven Module anwenden (nach Options-/Profilwechsel)
 function BDK:ApplySettings()
 	self:UpdateModules()
+	self:ApplyGeneralLook()
 	for moduleName in pairs(MODULE_KEYS) do
 		local mod = self:GetModule(moduleName)
 		if mod:IsEnabled() and mod.ApplySettings then
