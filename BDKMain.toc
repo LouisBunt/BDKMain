@@ -1,0 +1,20 @@
+## Interface: 120100, 120007, 120005
+## Title: |cffc41e3aBDK|rMain
+## Notes: Spezialisiertes Hilfs-Addon für den Blut-Todesritter: Knochenschild-Tracker mit Warnungen, Runen & Runenmacht, Todesstoß-Helfer und Cooldown-Leiste.
+## Notes-deDE: Spezialisiertes Hilfs-Addon für den Blut-Todesritter: Knochenschild-Tracker mit Warnungen, Runen & Runenmacht, Todesstoß-Helfer und Cooldown-Leiste.
+## Author: LouisBunt
+## Version: 1.0.0
+## SavedVariables: BDKMainDB
+## IconTexture: Interface\Icons\Spell_Deathknight_BloodPresence
+## AddonCompartmentFunc: BDKMain_OnAddonCompartmentClick
+## X-Category: Class
+## X-License: MIT
+
+embeds.xml
+
+Core.lua
+Modules\BoneShield.lua
+Modules\Resources.lua
+Modules\DeathStrike.lua
+Modules\Cooldowns.lua
+Options.lua
